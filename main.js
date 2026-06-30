@@ -1,0 +1,445 @@
+import "https://code4fukui.github.io/column-japan/japan-column-map.js";
+
+const STORAGE_KEY = "tomatta-japan-records";
+const PREFECTURES = [
+  "北海道",
+  "青森県",
+  "岩手県",
+  "宮城県",
+  "秋田県",
+  "山形県",
+  "福島県",
+  "茨城県",
+  "栃木県",
+  "群馬県",
+  "埼玉県",
+  "千葉県",
+  "東京都",
+  "神奈川県",
+  "新潟県",
+  "富山県",
+  "石川県",
+  "福井県",
+  "山梨県",
+  "長野県",
+  "岐阜県",
+  "静岡県",
+  "愛知県",
+  "三重県",
+  "滋賀県",
+  "京都府",
+  "大阪府",
+  "兵庫県",
+  "奈良県",
+  "和歌山県",
+  "鳥取県",
+  "島根県",
+  "岡山県",
+  "広島県",
+  "山口県",
+  "徳島県",
+  "香川県",
+  "愛媛県",
+  "高知県",
+  "福岡県",
+  "佐賀県",
+  "長崎県",
+  "熊本県",
+  "大分県",
+  "宮崎県",
+  "鹿児島県",
+  "沖縄県",
+];
+
+const map = document.getElementById("map");
+const form = document.getElementById("record-form");
+const prefectureInput = document.getElementById("prefecture-input");
+const datetimeInput = document.getElementById("datetime-input");
+const commentInput = document.getElementById("comment-input");
+const visitedSummary = document.getElementById("visited-summary");
+const resetButton = document.getElementById("reset-button");
+const recordsBody = document.getElementById("records-body");
+const historyEmpty = document.getElementById("history-empty");
+const rowTemplate = document.getElementById("record-row-template");
+
+let records = loadRecords();
+let editingRecordId = null;
+let selectedPrefecture = null;
+
+setupPrefectureOptions();
+datetimeInput.value = formatDateInput(new Date());
+render();
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  addRecord(prefectureInput.value, datetimeInput.value, commentInput.value);
+});
+
+prefectureInput.addEventListener("change", () => {
+  selectedPrefecture = prefectureInput.value;
+  renderMap();
+});
+
+map.addEventListener("prefecture-select", ({ detail }) => {
+  prefectureInput.value = detail.prefecture;
+  selectedPrefecture = detail.prefecture;
+  renderMap();
+});
+
+resetButton.addEventListener("click", () => {
+  if (!records.length) {
+    return;
+  }
+
+  const confirmed = window.confirm("保存済みの記録をすべて削除しますか？");
+  if (!confirmed) {
+    return;
+  }
+
+  records = [];
+  editingRecordId = null;
+  persistRecords();
+  render();
+});
+
+function setupPrefectureOptions() {
+  for (const prefecture of PREFECTURES) {
+    const option = document.createElement("option");
+    option.value = prefecture;
+    option.textContent = prefecture;
+    prefectureInput.append(option);
+  }
+}
+
+function addRecord(prefecture, dateValue, comment) {
+  if (!PREFECTURES.includes(prefecture) || !dateValue) {
+    return;
+  }
+
+  const timestamp = createTimestampFromDateInput(dateValue);
+  if (!timestamp) {
+    return;
+  }
+
+  records.push({
+    id: createRecordId(),
+    timestamp,
+    prefecture,
+    comment: comment.trim(),
+  });
+  records.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  selectedPrefecture = prefecture;
+  persistRecords();
+  commentInput.value = "";
+  datetimeInput.value = formatDateInput(new Date());
+  render();
+}
+
+function loadRecords() {
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map(normalizeRecord)
+      .filter(Boolean)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  } catch {
+    return [];
+  }
+}
+
+function normalizeRecord(item) {
+  const prefecture = item?.prefecture;
+  const timestamp = item?.timestamp;
+
+  if (!PREFECTURES.includes(prefecture) || typeof timestamp !== "string" || Number.isNaN(Date.parse(timestamp))) {
+    return null;
+  }
+
+  return {
+    id: typeof item.id === "string" ? item.id : createRecordId(),
+    timestamp,
+    prefecture,
+    comment: typeof item.comment === "string" ? item.comment.slice(0, 80) : "",
+  };
+}
+
+function persistRecords() {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+}
+
+function render() {
+  renderMap();
+  renderHistory();
+}
+
+function renderMap() {
+  const visited = getVisitedPrefectures();
+  const selected = selectedPrefecture ? [...new Set([...visited, selectedPrefecture])] : visited;
+  map.selectedPrefectures = selected;
+  visitedSummary.textContent = `${visited.length} / ${PREFECTURES.length}`;
+  queueMicrotask(renderMapStats);
+}
+
+function renderMapStats() {
+  const stats = getPrefectureStats();
+  const buttons = map.shadowRoot?.querySelectorAll("button");
+  if (!buttons?.length) {
+    return;
+  }
+
+  ensureMapStatsStyle();
+
+  for (const button of buttons) {
+    const prefecture = button.title;
+    const prefectureStats = stats.get(prefecture);
+    const shortName = getShortPrefectureName(prefecture);
+    const name = document.createElement("span");
+    name.className = "pref-name";
+    name.textContent = shortName;
+
+    button.textContent = "";
+    button.append(name);
+
+    if (prefectureStats) {
+      const count = document.createElement("span");
+      count.className = "pref-count";
+      count.textContent = `${prefectureStats.count}回`;
+
+      const last = document.createElement("span");
+      last.className = "pref-last";
+      last.textContent = formatShortDate(prefectureStats.lastTimestamp);
+
+      button.append(count, last);
+      button.setAttribute(
+        "aria-label",
+        `${prefecture}、${prefectureStats.count}回、最後は${formatDate(prefectureStats.lastTimestamp)}`,
+      );
+    } else {
+      button.setAttribute("aria-label", prefecture);
+    }
+  }
+}
+
+function ensureMapStatsStyle() {
+  if (map.shadowRoot.getElementById("tomatta-map-stats-style")) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "tomatta-map-stats-style";
+  style.textContent = `
+    button {
+      display: grid;
+      grid-template-rows: auto auto auto;
+      align-content: center;
+      justify-items: center;
+      gap: .08rem;
+      min-height: clamp(3.6rem, 12vw, 5.4rem);
+      line-height: 1.15;
+    }
+
+    .pref-name {
+      font-weight: 700;
+    }
+
+    .pref-count,
+    .pref-last {
+      font-size: clamp(.54rem, 1.7vw, .76rem);
+      font-weight: 700;
+      opacity: .86;
+      white-space: nowrap;
+    }
+
+    button[aria-pressed="false"] .pref-count,
+    button[aria-pressed="false"] .pref-last {
+      display: none;
+    }
+  `;
+  map.shadowRoot.append(style);
+}
+
+function renderHistory() {
+  recordsBody.textContent = "";
+  historyEmpty.style.display = records.length ? "none" : "block";
+
+  for (const record of [...records].reverse()) {
+    const row = rowTemplate.content.firstElementChild.cloneNode(true);
+    const timeCell = row.querySelector(".time-cell");
+    row.querySelector(".prefecture-cell").textContent = record.prefecture;
+    row.querySelector(".comment-cell").textContent = record.comment || "-";
+
+    if (editingRecordId === record.id) {
+      renderTimeEditor(timeCell, record);
+    } else {
+      const timeButton = document.createElement("button");
+      timeButton.type = "button";
+      timeButton.className = "time-button";
+      timeButton.textContent = formatDate(record.timestamp);
+      timeButton.addEventListener("click", () => {
+        editingRecordId = record.id;
+        renderHistory();
+      });
+      timeCell.append(timeButton);
+    }
+
+    row.querySelector(".delete-button").addEventListener("click", () => {
+      const confirmed = window.confirm("この記録を削除しますか？");
+      if (!confirmed) {
+        return;
+      }
+
+      records = records.filter((entry) => entry.id !== record.id);
+      if (editingRecordId === record.id) {
+        editingRecordId = null;
+      }
+      persistRecords();
+      render();
+    });
+    recordsBody.append(row);
+  }
+}
+
+function renderTimeEditor(container, record) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "time-edit";
+
+  const input = document.createElement("input");
+  input.type = "date";
+  input.value = formatDateInput(record.timestamp);
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.className = "mini-button";
+  saveButton.textContent = "更新";
+  saveButton.addEventListener("click", () => {
+    updateRecordTimestamp(record.id, input.value);
+  });
+
+  const cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.className = "mini-button secondary";
+  cancelButton.textContent = "取消";
+  cancelButton.addEventListener("click", () => {
+    editingRecordId = null;
+    renderHistory();
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      updateRecordTimestamp(record.id, input.value);
+    }
+    if (event.key === "Escape") {
+      editingRecordId = null;
+      renderHistory();
+    }
+  });
+
+  wrapper.append(input, saveButton, cancelButton);
+  container.append(wrapper);
+  queueMicrotask(() => input.focus());
+}
+
+function updateRecordTimestamp(recordId, dateValue) {
+  if (!dateValue) {
+    return;
+  }
+
+  const timestamp = createTimestampFromDateInput(dateValue);
+  if (!timestamp) {
+    return;
+  }
+
+  const record = records.find((entry) => entry.id === recordId);
+  if (!record) {
+    return;
+  }
+
+  record.timestamp = timestamp;
+  records.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  editingRecordId = null;
+  persistRecords();
+  render();
+}
+
+function getVisitedPrefectures() {
+  return PREFECTURES.filter((prefecture) => records.some((record) => record.prefecture === prefecture));
+}
+
+function getPrefectureStats() {
+  const stats = new Map();
+
+  for (const record of records) {
+    const current = stats.get(record.prefecture);
+    if (!current) {
+      stats.set(record.prefecture, {
+        count: 1,
+        lastTimestamp: record.timestamp,
+      });
+      continue;
+    }
+
+    current.count += 1;
+    if (record.timestamp > current.lastTimestamp) {
+      current.lastTimestamp = record.timestamp;
+    }
+  }
+
+  return stats;
+}
+
+function getShortPrefectureName(prefecture) {
+  if (prefecture === "北海道") {
+    return prefecture;
+  }
+  return prefecture.replace(/[都道府県]$/, "");
+}
+
+function formatDate(value) {
+  return new Date(value).toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatShortDate(value) {
+  return new Date(value).toLocaleDateString("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+  });
+}
+
+function formatDateInput(value) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function createTimestampFromDateInput(value) {
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString();
+}
+
+function createRecordId() {
+  return `record-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}

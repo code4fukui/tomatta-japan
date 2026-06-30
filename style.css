@@ -1,0 +1,275 @@
+:root {
+  color: #172033;
+  background: #f6f8f7;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  min-height: 2.5rem;
+  border: 1px solid #0f766e;
+  border-radius: .4rem;
+  background: #0f766e;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(.96);
+}
+
+.app {
+  width: min(100%, 56rem);
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+}
+
+.hero {
+  padding: 1rem 0 1.25rem;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 8vw, 3.2rem);
+  line-height: 1.08;
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+.lead {
+  margin-top: .5rem;
+  color: #53616a;
+}
+
+.panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #d8e2df;
+  border-radius: .5rem;
+  background: #fff;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .9rem;
+}
+
+.summary {
+  margin-top: .15rem;
+  color: #53616a;
+  font-weight: 700;
+}
+
+.secondary {
+  border-color: #b7c6c2;
+  background: #fff;
+  color: #25343a;
+}
+
+.map-panel {
+  padding-bottom: 1.2rem;
+}
+
+japan-column-map {
+  width: 100%;
+  --selected-color: #0f766e;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(12rem, 1fr);
+  gap: .85rem;
+  align-items: end;
+}
+
+label {
+  display: grid;
+  gap: .35rem;
+  color: #25343a;
+  font-size: .92rem;
+  font-weight: 700;
+}
+
+input,
+select {
+  min-height: 2.75rem;
+  width: 100%;
+  border: 1px solid #b7c6c2;
+  border-radius: .35rem;
+  padding: .45rem .55rem;
+  background: #fff;
+  color: #172033;
+}
+
+.comment-field {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actions button {
+  min-width: 7rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 42rem;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid #e5ecea;
+  padding: .7rem .45rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #53616a;
+  font-size: .82rem;
+}
+
+.time-cell {
+  width: 15rem;
+}
+
+.time-button {
+  min-height: 2rem;
+  padding: .1rem .45rem;
+  border-color: transparent;
+  background: transparent;
+  color: #0f766e;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.time-button:hover {
+  background: #ecfeff;
+  filter: none;
+}
+
+.time-edit {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  gap: .35rem;
+  align-items: center;
+}
+
+.time-edit input {
+  min-height: 2.35rem;
+}
+
+.mini-button {
+  min-height: 2.35rem;
+  padding: .1rem .55rem;
+  font-size: .85rem;
+}
+
+.prefecture-cell {
+  width: 7rem;
+  font-weight: 700;
+}
+
+.comment-cell {
+  word-break: break-word;
+}
+
+.row-action {
+  width: 4.5rem;
+  text-align: right;
+}
+
+.icon-button {
+  min-height: 2rem;
+  padding: .1rem .55rem;
+  border-color: #d8e2df;
+  background: #fff;
+  color: #6d2020;
+  font-size: .85rem;
+}
+
+.empty {
+  padding: .7rem 0 0;
+  color: #53616a;
+}
+
+.bottom-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.page-footer {
+  padding: 0 1rem 2rem;
+  text-align: center;
+}
+
+.page-footer a {
+  color: #0f766e;
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding-inline: .75rem;
+  }
+
+  .panel {
+    padding: .85rem;
+  }
+
+  .section-head {
+    align-items: flex-start;
+  }
+
+  .form {
+    grid-template-columns: 1fr;
+  }
+
+  .comment-field,
+  .actions {
+    grid-column: auto;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+
+  .bottom-actions button {
+    width: 100%;
+  }
+}
