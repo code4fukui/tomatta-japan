@@ -68,8 +68,11 @@
     </section>
 
     <div class="bottom-actions">
+      <button type="button" id="import-button" class="secondary">CSVインポート</button>
+      <button type="button" id="export-button" class="secondary">CSVエクスポート</button>
       <button type="button" id="reset-button" class="secondary">全削除</button>
     </div>
+    <input id="import-file-input" type="file" accept=".csv,text/csv" hidden>
   </main>
 
   <template id="record-row-template">
@@ -107,6 +110,9 @@ const prefectureInput = document.getElementById("prefecture-input");
 const datetimeInput = document.getElementById("datetime-input");
 const commentInput = document.getElementById("comment-input");
 const visitedSummary = document.getElementById("visited-summary");
+const importButton = document.getElementById("import-button");
+const importFileInput = document.getElementById("import-file-input");
+const exportButton = document.getElementById("export-button");
 const resetButton = document.getElementById("reset-button");
 const recordsBody = document.getElementById("records-body");
 const historyEmpty = document.getElementById("history-empty");
@@ -134,6 +140,49 @@ map.addEventListener("prefecture-select", ({ detail }) => {
   prefectureInput.value = detail.prefecture;
   selectedPrefecture = detail.prefecture;
   renderMap();
+});
+
+exportButton.addEventListener("click", () => {
+  if (!records.length) return;
+
+  const csv = buildCsv(records);
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `tomatta-japan-${formatDateInput(new Date())}.csv`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+});
+
+importButton.addEventListener("click", () => {
+  importFileInput.click();
+});
+
+importFileInput.addEventListener("change", async () => {
+  const [file] = importFileInput.files || [];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const imported = parseCsvRecords(text);
+    if (!imported.length) {
+      window.alert("読み込める記録がありませんでした。");
+      return;
+    }
+
+    records = [...records, ...imported]
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    persistRecords();
+    render();
+    window.alert(`${imported.length}件の記録を読み込みました。`);
+  } catch {
+    window.alert("CSVの読み込みに失敗しました。");
+  } finally {
+    importFileInput.value = "";
+  }
 });
 
 resetButton.addEventListener("click", () => {
@@ -390,6 +439,103 @@ function updateRecordTimestamp(recordId, dateValue) {
   editingRecordId = null;
   persistRecords();
   render();
+}
+
+function buildCsv(source) {
+  const rows = [
+    ["日付", "都道府県", "コメント"],
+    ...source.map((record) => [
+      formatDateInput(record.timestamp),
+      record.prefecture,
+      record.comment,
+    ]),
+  ];
+
+  return rows
+    .map((row) => row.map(escapeCsvCell).join(","))
+    .join("\r\n");
+}
+
+function parseCsvRecords(text) {
+  const rows = parseCsvRows(text.replace(/^\uFEFF/, ""));
+  if (rows.length <= 1) return [];
+
+  const header = rows[0].map((cell) => cell.trim());
+  const dateIndex = findHeaderIndex(header, ["日付", "date"]);
+  const prefectureIndex = findHeaderIndex(header, ["都道府県", "prefecture"]);
+  const commentIndex = findHeaderIndex(header, ["コメント", "comment"]);
+  if (dateIndex < 0 || prefectureIndex < 0) return [];
+
+  return rows
+    .slice(1)
+    .map((row) => {
+      const timestamp = createTimestampFromDateInput(row[dateIndex]?.trim());
+      const prefecture = row[prefectureIndex]?.trim();
+      if (!timestamp || !PREFECTURES.includes(prefecture)) return null;
+
+      return {
+        id: createRecordId(),
+        timestamp,
+        prefecture,
+        comment: commentIndex >= 0 ? String(row[commentIndex] || "").slice(0, 80) : "",
+      };
+    })
+    .filter(Boolean);
+}
+
+function findHeaderIndex(header, names) {
+  return header.findIndex((cell) => names.includes(cell));
+}
+
+function parseCsvRows(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (inQuotes) {
+      if (char === "\"" && next === "\"") {
+        cell += "\"";
+        index += 1;
+      } else if (char === "\"") {
+        inQuotes = false;
+      } else {
+        cell += char;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (char === "\n") {
+      row.push(cell.replace(/\r$/, ""));
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+
+  if (cell || row.length) {
+    row.push(cell.replace(/\r$/, ""));
+    rows.push(row);
+  }
+
+  return rows.filter((currentRow) => currentRow.some((value) => value !== ""));
+}
+
+function escapeCsvCell(value) {
+  const text = String(value ?? "");
+  if (!/[",\r\n]/.test(text)) return text;
+  return `"${text.split("\"").join("\"\"")}"`;
 }
 
 function getVisitedPrefectures() {

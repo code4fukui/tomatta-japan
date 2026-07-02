@@ -231,7 +231,9 @@ th {
 
 .bottom-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: .6rem;
   margin-top: 1rem;
 }
 
