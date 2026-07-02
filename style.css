@@ -117,6 +117,7 @@ label {
 
 input,
 select {
+  min-width: 0;
   min-height: 2.75rem;
   width: 100%;
   border: 1px solid #b7c6c2;
@@ -266,6 +267,23 @@ th {
   }
 
   .actions button {
+    width: 100%;
+  }
+
+  .time-cell {
+    width: 13rem;
+  }
+
+  .time-edit {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .time-edit input {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .mini-button {
     width: 100%;
   }
 
