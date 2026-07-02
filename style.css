@@ -118,6 +118,7 @@ label {
 input,
 select {
   min-width: 0;
+  max-width: 100%;
   min-height: 2.75rem;
   width: 100%;
   border: 1px solid #b7c6c2;
@@ -125,6 +126,11 @@ select {
   padding: .45rem .55rem;
   background: #fff;
   color: #172033;
+}
+
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .comment-field {
@@ -186,16 +192,18 @@ th {
 
 .time-edit {
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  grid-template-columns: 1fr 1fr;
   gap: .35rem;
   align-items: center;
 }
 
 .time-edit input {
+  grid-column: 1 / -1;
   min-height: 2.35rem;
 }
 
 .mini-button {
+  width: 100%;
   min-height: 2.35rem;
   padding: .1rem .55rem;
   font-size: .85rem;
@@ -208,6 +216,34 @@ th {
 
 .comment-cell {
   word-break: break-word;
+}
+
+.comment-button {
+  min-height: 2rem;
+  width: 100%;
+  padding: .1rem .45rem;
+  border-color: transparent;
+  background: transparent;
+  color: #25343a;
+  font-weight: 500;
+  text-align: left;
+  white-space: normal;
+}
+
+.comment-button:hover {
+  background: #ecfeff;
+  filter: none;
+}
+
+.comment-edit {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: .35rem;
+  align-items: center;
+}
+
+.comment-edit input {
+  min-height: 2.35rem;
 }
 
 .row-action {
@@ -276,17 +312,12 @@ th {
     width: 13rem;
   }
 
-  .time-edit {
+  .comment-edit {
     grid-template-columns: 1fr 1fr;
   }
 
-  .time-edit input {
+  .comment-edit input {
     grid-column: 1 / -1;
-    width: 100%;
-  }
-
-  .mini-button {
-    width: 100%;
   }
 
   .bottom-actions button {

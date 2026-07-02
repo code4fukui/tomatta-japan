@@ -120,6 +120,7 @@ const rowTemplate = document.getElementById("record-row-template");
 
 let records = loadRecords();
 let editingRecordId = null;
+let editingCommentId = null;
 let selectedPrefecture = null;
 
 setupPrefectureOptions();
@@ -193,6 +194,7 @@ resetButton.addEventListener("click", () => {
 
   records = [];
   editingRecordId = null;
+  editingCommentId = null;
   persistRecords();
   render();
 });
@@ -357,8 +359,8 @@ function renderHistory() {
   for (const record of [...records].reverse()) {
     const row = rowTemplate.content.firstElementChild.cloneNode(true);
     const timeCell = row.querySelector(".time-cell");
+    const commentCell = row.querySelector(".comment-cell");
     row.querySelector(".prefecture-cell").textContent = record.prefecture;
-    row.querySelector(".comment-cell").textContent = record.comment || "-";
 
     if (editingRecordId === record.id) {
       renderTimeEditor(timeCell, record);
@@ -374,12 +376,27 @@ function renderHistory() {
       timeCell.append(timeButton);
     }
 
+    if (editingCommentId === record.id) {
+      renderCommentEditor(commentCell, record);
+    } else {
+      const commentButton = document.createElement("button");
+      commentButton.type = "button";
+      commentButton.className = "comment-button";
+      commentButton.textContent = record.comment || "-";
+      commentButton.addEventListener("click", () => {
+        editingCommentId = record.id;
+        renderHistory();
+      });
+      commentCell.append(commentButton);
+    }
+
     row.querySelector(".delete-button").addEventListener("click", () => {
       const confirmed = window.confirm("この記録を削除しますか？");
       if (!confirmed) return;
 
       records = records.filter((entry) => entry.id !== record.id);
       if (editingRecordId === record.id) editingRecordId = null;
+      if (editingCommentId === record.id) editingCommentId = null;
       persistRecords();
       render();
     });
@@ -425,6 +442,45 @@ function renderTimeEditor(container, record) {
   queueMicrotask(() => input.focus());
 }
 
+function renderCommentEditor(container, record) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "comment-edit";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.maxLength = 80;
+  input.value = record.comment;
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.className = "mini-button";
+  saveButton.textContent = "更新";
+  saveButton.addEventListener("click", () => {
+    updateRecordComment(record.id, input.value);
+  });
+
+  const cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.className = "mini-button secondary";
+  cancelButton.textContent = "取消";
+  cancelButton.addEventListener("click", () => {
+    editingCommentId = null;
+    renderHistory();
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") updateRecordComment(record.id, input.value);
+    if (event.key === "Escape") {
+      editingCommentId = null;
+      renderHistory();
+    }
+  });
+
+  wrapper.append(input, saveButton, cancelButton);
+  container.append(wrapper);
+  queueMicrotask(() => input.focus());
+}
+
 function updateRecordTimestamp(recordId, dateValue) {
   if (!dateValue) return;
 
@@ -439,6 +495,16 @@ function updateRecordTimestamp(recordId, dateValue) {
   editingRecordId = null;
   persistRecords();
   render();
+}
+
+function updateRecordComment(recordId, comment) {
+  const record = records.find((entry) => entry.id === recordId);
+  if (!record) return;
+
+  record.comment = comment.trim().slice(0, 80);
+  editingCommentId = null;
+  persistRecords();
+  renderHistory();
 }
 
 function buildCsv(source) {
