@@ -17,6 +17,7 @@ button,
 input,
 select {
   font: inherit;
+  font-size: 16px;
 }
 
 button {
@@ -107,8 +108,13 @@ japan-column-map {
   align-items: end;
 }
 
+.form > * {
+  min-width: 0;
+}
+
 label {
   display: grid;
+  min-width: 0;
   gap: .35rem;
   color: #25343a;
   font-size: .92rem;
@@ -119,6 +125,7 @@ input,
 select {
   min-width: 0;
   max-width: 100%;
+  inline-size: 100%;
   min-height: 2.75rem;
   width: 100%;
   border: 1px solid #b7c6c2;
@@ -131,6 +138,14 @@ select {
 input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
+  display: block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
 }
 
 .comment-field {
@@ -297,6 +312,11 @@ th {
 
   .form {
     grid-template-columns: 1fr;
+  }
+
+  #datetime-input {
+    inline-size: 100%;
+    max-inline-size: 100%;
   }
 
   .comment-field,
